@@ -1,3 +1,5 @@
+import itertools
+
 import cv2
 import socket
 from cvzone.HandTrackingModule import HandDetector
@@ -19,8 +21,9 @@ class HandTracker:
         self.capture.set(3, self.width)
         self.capture.set(4, self.height)
 
+
         # Solo detecta una mano, la primera que aparece frente a la webcam. Es posible detectar más de una.
-        self.detector = HandDetector(maxHands=1, detectionCon=0.8)
+        self.detector = HandDetector(maxHands=2, detectionCon=0.8)
 
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_address_port = ("127.0.0.1", self.port)
@@ -33,18 +36,15 @@ class HandTracker:
 
         hands, img = self.detector.findHands(img)
         data = []
-        if hands:
-            hand = hands[0]
+        for hand in hands:
             landmarks = hand["lmList"]
             hand_type = hand["type"]
             data.append(hand_type)
-            data.append(self.height)
-            for lm in landmarks:
-                data.extend([lm[0], lm[1], lm[2]])
-        else:
+            data.append(img.shape[0])
+            data.append(img.shape[1])
+            data.extend(itertools.chain(*landmarks))
+        if not hands:
             data.append("NoHand")
-            data.append(0)
-            data.extend([0 for i in range(21*3)])
 
         return img, data
 
@@ -59,10 +59,9 @@ class HandTracker:
             while True:
                 img, data = self._process_capture()
                 if data:
-                    print(len(data))
                     s.sendto(str.encode(str(data)), self.server_address_port)
 
                 if display_video:
-                    img = cv2.resize(img, (self.width, self.height))
+                    img = cv2.resize(img, (self.width // 3, self.height // 3))
                     cv2.imshow("Image", img)
                     cv2.waitKey(1)

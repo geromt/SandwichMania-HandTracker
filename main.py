@@ -1,4 +1,4 @@
-from app.tracker import HandTracker
+﻿from app.tracker import HandTracker
 
 
 def main():
